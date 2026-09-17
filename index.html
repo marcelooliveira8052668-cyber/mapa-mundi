@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa Geográfico Interativo - Cidades, Rios e Regiões</title>
+    
+    <!-- Importando o CSS e JS do Leaflet via CDN -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            margin-bottom: 5px;
+            font-size: 1.8rem;
+            color: #38bdf8;
+            text-align: center;
+        }
+
+        p.subtitle {
+            color: #94a3b8;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .map-wrapper {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            max-width: 1000px;
+            width: 100%;
+        }
+
+        #map {
+            width: 100%;
+            height: 500px;
+            border-radius: 8px;
+            z-index: 1;
+        }
+
+        #info-box {
+            margin-top: 15px;
+            padding: 15px 20px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-left: 5px solid #38bdf8;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        #info-box strong {
+            color: #38bdf8;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Mapa-Múndi Geográfico e Temático</h1>
+    <p class="subtitle">Explore cidades, capitais, rios e grandes regiões clicando nos marcadores do mapa.</p>
+
+    <div class="map-wrapper">
+        <div id="map"></div>
+        
+        <div id="info-box">
+            <strong>Local Selecionado:</strong> Clique em qualquer marcador no mapa para ver informações detalhadas sobre cidades, rios ou regiões.
+        </div>
+    </div>
+
+    <script>
+        // Inicializa o mapa centralizado no mundo
+        const map = L.map('map').setView([20, 0], 2);
+
+        // Adiciona a camada de mapa limpa via internet (OpenStreetMap)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Lista de pontos de interesse (Cidades, Rios, Lagos e Regiões)
+        const locais = [
+            // Cidades / Capitais
+            { lat: -15.7801, lng: -47.9292, nome: "Brasília (Capital do Brasil)", tipo: "Cidade / Capital", info: "Centro político do Brasil, projetado por Lúcio Costa e Oscar Niemeyer." },
+            { lat: 40.7128, lng: -74.0060, nome: "Nova York", tipo: "Cidade Global", info: "Um dos principais centros financeiros, culturais e comerciais do mundo." },
+            { lat: 30.0444, lng: 31.2357, nome: "Cairo", tipo: "Cidade Histórica", info: "Capital do Egito, localizada às margens do Rio Nilo, berço de milênios de história." },
+            { lat: 39.9042, lng: 116.4074, nome: "Pequim (Beijing)", tipo: "Cidade / Capital", info: "Capital da China, centro de grande relevância econômica e geopolítica global." },
+            
+            // Rios Importantes
+            { lat: -3.4653, lng: -62.2159, nome: "Rio Amazonas", tipo: "Rio", info: "O maior rio do mundo em volume de água e extensão da bacia hidrográfica." },
+            { lat: 26.8206, lng: 30.8025, nome: "Rio Nilo", tipo: "Rio", info: "Tradicionalmente considerado o rio mais longo do mundo, fundamental para a história da África." },
+            { lat: 48.3794, lng: 31.1656, nome: "Rio Danúbio / Europa Oriental", tipo: "Região Hidrográfica", info: "Cruza várias capitais europeias, sendo eixo histórico de comércio e geopolítica." },
+
+            // Lagos e Regiões
+            { lat: -2.3333, lng: 33.0000, nome: "Lago Vitória", tipo: "Lago", info: "O maior lago da África e principal nascente do Nilo Branco." },
+            { lat: 55.7558, lng: 37.6173, nome: "Moscou / Planície Russa", tipo: "Região Geopolítica", info: "Ponto central da Eurásia, com forte peso na economia e história global." }
+        ];
+
+        // Adiciona os marcadores no mapa
+        locais.forEach(local => {
+            const marker = L.marker([local.lat, local.lng]).addTo(map);
+
+            marker.on('click', () => {
+                document.getElementById('info-box').innerHTML = `
+                    <strong>${local.nome}</strong> (${local.tipo})<br>
+                    <span>${local.info}</span>
+                `;
+            });
+        });
+    </script>
+
+</body>
+</html>
