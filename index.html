@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mapa Geográfico Interativo - Cidades, Rios e Regiões</title>
+    <title>Mapa Interativo - Ruas, Satélite e Híbrido</title>
     
-    <!-- Importando o CSS e JS do Leaflet via CDN -->
+    <!-- Importando o Leaflet CSS e JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -69,43 +69,62 @@
 </head>
 <body>
 
-    <h1>Mapa-Múndi Geográfico e Temático</h1>
-    <p class="subtitle">Explore cidades, capitais, rios e grandes regiões clicando nos marcadores do mapa.</p>
+    <h1>Mapa Geográfico com Satélite e Híbrido</h1>
+    <p class="subtitle">Use o menu no canto superior direito do mapa para alternar entre Ruas, Satélite e Híbrido.</p>
 
     <div class="map-wrapper">
         <div id="map"></div>
         
         <div id="info-box">
-            <strong>Local Selecionado:</strong> Clique em qualquer marcador no mapa para ver informações detalhadas sobre cidades, rios ou regiões.
+            <strong>Local Selecionado:</strong> Clique em qualquer marcador no mapa para ver informações detalhadas.
         </div>
     </div>
 
     <script>
-        // Inicializa o mapa centralizado no mundo
-        const map = L.map('map').setView([20, 0], 2);
-
-        // Adiciona a camada de mapa limpa via internet (OpenStreetMap)
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 18,
+        // 1. Camadas de Base (Ruas e Satélite Puro)
+        const ruas = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
             attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
+        });
 
-        // Lista de pontos de interesse (Cidades, Rios, Lagos e Regiões)
+        const satelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+        });
+
+        // 2. Camada Híbrida (Satélite + Nomes de Cidades/Fronteiras por cima)
+        const rotulosHibridos = L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19
+        });
+        
+        const hibrido = L.layerGroup([satelite, rotulosHibridos]);
+
+        // Inicializa o mapa já com a visão de satélite padrão (ou mude para 'ruas')
+        const map = L.map('map', {
+            center: [20, 0],
+            zoom: 2,
+            layers: [satelite] // Começa no satélite
+        });
+
+        // 3. Adiciona o controle para alternar os mapas no canto superior direito
+        const camadasBase = {
+            "🌎 Satélite": satelite,
+            "🛰️ Híbrido (Satélite + Nomes)": hibrido,
+            "🗺️ Ruas (Padrão)": ruas
+        };
+
+        L.control.layers(camadases = camadasBase).addTo(map);
+
+        // 4. Seus pontos de interesse (Cidades, Rios e Lagos)
         const locais = [
-            // Cidades / Capitais
             { lat: -15.7801, lng: -47.9292, nome: "Brasília (Capital do Brasil)", tipo: "Cidade / Capital", info: "Centro político do Brasil, projetado por Lúcio Costa e Oscar Niemeyer." },
             { lat: 40.7128, lng: -74.0060, nome: "Nova York", tipo: "Cidade Global", info: "Um dos principais centros financeiros, culturais e comerciais do mundo." },
-            { lat: 30.0444, lng: 31.2357, nome: "Cairo", tipo: "Cidade Histórica", info: "Capital do Egito, localizada às margens do Rio Nilo, berço de milênios de história." },
+            { lat: 30.0444, lng: 31.2357, nome: "Cairo", tipo: "Cidade Histórica", info: "Capital do Egito, localizada às margens do Rio Nilo." },
             { lat: 39.9042, lng: 116.4074, nome: "Pequim (Beijing)", tipo: "Cidade / Capital", info: "Capital da China, centro de grande relevância econômica e geopolítica global." },
-            
-            // Rios Importantes
             { lat: -3.4653, lng: -62.2159, nome: "Rio Amazonas", tipo: "Rio", info: "O maior rio do mundo em volume de água e extensão da bacia hidrográfica." },
-            { lat: 26.8206, lng: 30.8025, nome: "Rio Nilo", tipo: "Rio", info: "Tradicionalmente considerado o rio mais longo do mundo, fundamental para a história da África." },
-            { lat: 48.3794, lng: 31.1656, nome: "Rio Danúbio / Europa Oriental", tipo: "Região Hidrográfica", info: "Cruza várias capitais europeias, sendo eixo histórico de comércio e geopolítica." },
-
-            // Lagos e Regiões
+            { lat: 26.8206, lng: 30.8025, nome: "Rio Nilo", tipo: "Rio", info: "Tradicionalmente considerado o rio mais longo do mundo." },
             { lat: -2.3333, lng: 33.0000, nome: "Lago Vitória", tipo: "Lago", info: "O maior lago da África e principal nascente do Nilo Branco." },
-            { lat: 55.7558, lng: 37.6173, nome: "Moscou / Planície Russa", tipo: "Região Geopolítica", info: "Ponto central da Eurásia, com forte peso na economia e história global." }
+            { lat: 55.7558, lng: 37.6173, nome: "Moscou / Planície Russa", tipo: "Região Geopolítica", info: "Ponto central da Eurásia, com forte peso na história global." }
         ];
 
         // Adiciona os marcadores no mapa
