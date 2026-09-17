@@ -1,14 +1,12 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mapa Interativo com Busca Global</title>
-
-    <!-- Importando o Leaflet CSS e JS -->
+    <title>GPS Direto - Rota Perfeita</title>
+    
+    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
         body {
@@ -46,15 +44,14 @@
             width: 100%;
         }
 
-        /* Barra de Pesquisa */
-        .search-container {
-            display: flex;
+        .controls-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr 180px auto;
             gap: 10px;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
         }
 
-        .search-container input {
-            flex: 1;
+        .controls-container input, .controls-container select {
             padding: 12px 15px;
             background-color: #0f172a;
             border: 1px solid #334155;
@@ -64,11 +61,7 @@
             outline: none;
         }
 
-        .search-container input:focus {
-            border-color: #38bdf8;
-        }
-
-        .search-container button {
+        .controls-container button {
             padding: 0 20px;
             background-color: #38bdf8;
             color: #0f172a;
@@ -76,141 +69,187 @@
             border-radius: 6px;
             font-weight: bold;
             cursor: pointer;
-            transition: background 0.3s;
         }
 
-        .search-container button:hover {
+        .controls-container button:hover {
             background-color: #0ea5e9;
+        }
+
+        #status-msg {
+            margin-bottom: 12px;
+            font-size: 1rem;
+            color: #34d399;
+            text-align: center;
+            font-weight: bold;
+            background: #0f172a;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #334155;
         }
 
         #map {
             width: 100%;
-            height: 450px;
+            height: 480px;
             border-radius: 8px;
             z-index: 1;
         }
-
-        #info-box {
-            margin-top: 15px;
-            padding: 15px 20px;
-            background: #0f172a;
-            border: 1px solid #334155;
-            border-left: 5px solid #38bdf8;
-            border-radius: 6px;
-            font-size: 1rem;
-        }
-
-        #info-box strong {
-            color: #38bdf8;
-        }
     </style>
 </head>
-
 <body>
 
-    <h1>Mapa Geográfico com Busca Global</h1>
-    <p class="subtitle">Pesquise ruas, avenidas, bairros, cidades, países, rios ou lagos e altere as camadas no canto
-        superior direito.</p>
+    <h1>GPS Global Direto</h1>
+    <p class="subtitle">Insira a origem e o destino para desenhar a linha da rota instantaneamente.</p>
 
     <div class="map-wrapper">
-        <!-- Caixa de Busca -->
-        <div class="search-container">
-            <input type="text" id="searchInput"
-                placeholder="Digite ruas, cidades, rios, lagos ou países (ex: Rio Amazonas, Av Paulista, Tóquio)..." />
-            <button onclick="realizarBusca()">Buscar</button>
+        <div class="controls-container">
+            <input type="text" id="origem" placeholder="Origem" value="Osasco, SP" />
+            <input type="text" id="destino" placeholder="Destino" value="Rua Pequetita, 111, São Paulo" />
+            
+            <select id="transporte">
+                <option value="car">🚗 Carro</option>
+                <option value="bus">🚌 Ônibus</option>
+                <option value="bike">🚲 Bicicleta</option>
+                <option value="foot">🚶 A Pé / Correndo</option>
+                <option value="plane">✈️ Avião (Linha Reta)</option>
+            </select>
+
+            <button onclick="tracarRotaDireta()">Navegar</button>
         </div>
+
+        <div id="status-msg">Pronto para iniciar. Digite os locais acima.</div>
 
         <div id="map"></div>
-
-        <div id="info-box">
-            <strong>Status:</strong> Digite um local acima ou clique no mapa para começar.
-        </div>
     </div>
 
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <script>
-        // 1. Camadas de Base (Ruas, Satélite e Híbrido)
-        const ruas = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap contributors'
-        });
+        const ruas = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 });
+        const satelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
 
-        const satelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            maxZoom: 19,
-            attribution: 'Tiles &copy; Esri'
-        });
-
-        const rotulosHibridos = L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
-            maxZoom: 19
-        });
-
-        const hibrido = L.layerGroup([satelite, rotulosHibridos]);
-
-        // Inicializa o mapa com a camada de ruas padrão
         const map = L.map('map', {
-            center: [20, 0],
-            zoom: 2,
+            center: [-23.55, -46.63],
+            zoom: 11,
             layers: [ruas]
         });
 
-        // Adiciona o controle de camadas no canto superior direito
-        L.control.layers({
-            "🗺️ Ruas (Padrão)": ruas,
-            "🌎 Satélite": satelite,
-            "🛰️ Híbrido": hibrido
-        }).addTo(map);
+        L.control.layers({ "Ruas": ruas, "Satélite": satelite }).addTo(map);
 
-        let marcadorAtual = null;
+        let camadaRota = null;
+        let marcadorOrigem = null;
+        let marcadorDestino = null;
+        const statusMsg = document.getElementById('status-msg');
 
-        // 2. Função de Busca Global utilizando a API do OpenStreetMap (Nominatim)
-        async function realizarBusca() {
-            const query = document.getElementById('searchInput').value.trim();
-            if (!query) return;
-
-            document.getElementById('info-box').innerHTML = `<strong>Status:</strong> Buscando por "${query}"...`;
-
-            try {
-                const resposta = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
-                const dados = await resposta.json();
-
-                if (dados && dados.length > 0) {
-                    const local = dados[0];
-                    const lat = parseFloat(local.lat);
-                    const lon = parseFloat(local.lon);
-                    const nomeCompleto = local.display_name;
-
-                    // Move o mapa até o local encontrado com zoom aproximado (13)
-                    map.setView([lat, lon], 13);
-
-                    // Remove o marcador anterior se existir
-                    if (marcadorAtual) {
-                        map.removeLayer(marcadorAtual);
-                    }
-
-                    // Adiciona o novo marcador
-                    marcadorAtual = L.marker([lat, lon]).addTo(map)
-                        .bindPopup(`<b>${nomeCompleto}</b>`)
-                        .openPopup();
-
-                    document.getElementById('info-box').innerHTML = `
-                        <strong>Local Encontrado:</strong> ${nomeCompleto}<br>
-                        <span style="color: #94a3b8; font-size: 0.9rem;">Coordenadas: Lat ${lat.toFixed(4)}, Lon ${lon.toFixed(4)}</span>
-                    `;
-                } else {
-                    document.getElementById('info-box').innerHTML = `<strong>Aviso:</strong> Nenhum resultado encontrado para "${query}". Tente refinar a busca.`;
-                }
-            } catch (erro) {
-                document.getElementById('info-box').innerHTML = `<strong>Erro:</strong> Falha ao conectar com o serviço de busca.`;
+        async function buscarCoordenadas(localTexto) {
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(localTexto)}&limit=1`;
+            const resposta = await fetch(url);
+            const dados = await resposta.json();
+            if (dados && dados.length > 0) {
+                return {
+                    lat: parseFloat(dados[0].lat),
+                    lon: parseFloat(dados[0].lon),
+                    nome: dados[0].display_name
+                };
             }
+            throw new Error(`Local não reconhecido: "${localTexto}". Adicione rua, número e cidade.`);
         }
 
-        // Permite buscar apertando a tecla "Enter" no teclado
-        document.getElementById('searchInput').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                realizarBusca();
+        function calcularDistanciaLinhaReta(p1, p2) {
+            const R = 6371;
+            const dLat = (p2.lat - p1.lat) * Math.PI / 180;
+            const dLon = (p2.lon - p1.lon) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(p1.lat * Math.PI / 180) * Math.cos(p2.lat * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+        }
+
+        async function tracarRotaDireta() {
+            const origemTexto = document.getElementById('origem').value.trim();
+            const destinoTexto = document.getElementById('destino').value.trim();
+            const tipoTransporte = document.getElementById('transporte').value;
+
+            if (!origemTexto || !destinoTexto) {
+                statusMsg.style.color = "#f87171";
+                statusMsg.innerText = "⚠️ Preencha a origem e o destino.";
+                return;
             }
-        });
+
+            try {
+                statusMsg.style.color = "#fbbf24";
+                statusMsg.innerText = "🔍 Buscando endereços no mapa...";
+
+                const p1 = await buscarCoordenadas(origemTexto);
+                const p2 = await buscarCoordenadas(destinoTexto);
+
+                // Limpa elementos anteriores do mapa
+                if (camadaRota) map.removeLayer(camadaRota);
+                if (marcadorOrigem) map.removeLayer(marcadorOrigem);
+                if (marcadorDestino) map.removeLayer(marcadorDestino);
+
+                marcadorOrigem = L.marker([p1.lat, p1.lon]).addTo(map).bindPopup(`<b>Origem:</b> ${origemTexto}`);
+                marcadorDestino = L.marker([p2.lat, p2.lon]).addTo(map).bindPopup(`<b>Destino:</b> ${destinoTexto}`);
+
+                // Se for Avião (Linha Reta)
+                if (tipoTransporte === 'plane') {
+                    const km = calcularDistanciaLinhaReta(p1, p2);
+                    const tempoH = km / 800; // 800 km/h
+                    const h = Math.floor(tempoH);
+                    const m = Math.round((tempoH - h) * 60);
+
+                    camadaRota = L.polyline([[p1.lat, p1.lon], [p2.lat, p2.lon]], { color: '#38bdf8', weight: 5, dashArray: '10, 10' }).addTo(map);
+                    map.fitBounds(camadaRota.getBounds(), { padding: [50, 50] });
+
+                    statusMsg.style.color = "#34d399";
+                    statusMsg.innerHTML = `✈️ <b>Avião:</b> Linha reta de <b>${km.toFixed(1)} km</b> | Tempo estimado: <b>${h}h ${m}m</b>`;
+                    return;
+                }
+
+                statusMsg.style.color = "#34d399";
+                statusMsg.innerText = "🗺️ Calculando trajeto nas ruas...";
+
+                // Mapeia perfis do OSRM
+                let perfil = tipoTransporte;
+                if (tipoTransporte === 'bus') perfil = 'car'; // OSRM usa rotas viárias para ônibus
+
+                const urlOsrm = `https://router.project-osrm.org/route/v1/${perfil}/${p1.lon},${p1.lat};${p2.lon},${p2.lat}?overview=full&geometries=geojson`;
+                
+                const resOsrm = await fetch(urlOsrm);
+                const dadosOsrm = await resOsrm.json();
+
+                if (dadosOsrm.code !== 'Ok' || !dadosOsrm.routes.length) {
+                    throw new Error("Não foi possível traçar o caminho rodoviário entre esses pontos.");
+                }
+
+                const rota = dadosOsrm.routes[0];
+                let km = (rota.distance / 1000).toFixed(1);
+                let segundos = rota.duration;
+
+                if (tipoTransporte === 'bus') {
+                    segundos *= 1.4; // Ônibus adiciona tempo de paradas
+                }
+
+                const minutosTotais = Math.round(segundos / 60);
+                const horas = Math.floor(minutosTotais / 60);
+                const minutos = minutosTotais % 60;
+                let tempoFormatado = horas > 0 ? `${horas}h ${minutos}m` : `${minutos} minutos`;
+
+                // Desenha a linha azul da rota no mapa
+                const coordenadasGeo = rota.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+                camadaRota = L.polyline(coordenadasGeo, { color: '#38bdf8', weight: 6, opacity: 0.85 }).addTo(map);
+                
+                map.fitBounds(camadaRota.getBounds(), { padding: [50, 50] });
+
+                const iconeNome = tipoTransporte === 'bus' ? '🚌 Ônibus' : tipoTransporte === 'bike' ? '🚲 Bicicleta' : tipoTransporte === 'foot' ? '🚶 A Pé' : '🚗 Carro';
+                statusMsg.innerHTML = `${iconeNome} Pronto! Distância: <b>${km} km</b> | ⏱️ Tempo: <b>${tempoFormatado}</b>`;
+
+            } catch (erro) {
+                statusMsg.style.color = "#f87171";
+                statusMsg.innerText = "❌ " + erro.message;
+            }
+        }
     </script>
 
 </body>
-
 </html>
